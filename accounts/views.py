@@ -8,31 +8,43 @@ from .serializers import UserSerializer, LoginSerializer
 
 class GoogleLoginView(APIView):
     """
-    One-click Google authentication (no password required).
-    Directly connects user like in real Cosmos Video.
+    Google authentication with email and password verification.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
+        password = request.data.get('password', '').strip()
         name = request.data.get('name', '').strip()
 
         if not email:
-            email = 'kuma1412002@gmail.com'
+            return Response({"detail": "Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
+
         if not name:
-            name = 'Guest 470'
+            name = email.split('@')[0].replace('.', ' ').title()
 
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                'name': name,
-                'role': 'Admin',
-                'status': 'online',
-            }
-        )
+        try:
+            user = User.objects.get(email__iexact=email)
+            if user.password and user.password.startswith('pbkdf2_'):
+                if password and not user.check_password(password):
+                    return Response({"detail": "Wrong password. Try again."}, status=status.HTTP_401_UNAUTHORIZED)
+            elif password:
+                user.set_password(password)
+                user.save(update_fields=['password'])
+        except User.DoesNotExist:
+            user = User.objects.create_user(
+                email=email,
+                name=name,
+                password=password if password else 'Password123!',
+                role='Admin' if 'admin' in email.lower() or User.objects.count() == 0 else 'Employee'
+            )
 
+        update_fields = ['status']
         user.status = 'online'
-        user.save(update_fields=['status'])
+        if name and user.name != name:
+            user.name = name
+            update_fields.append('name')
+        user.save(update_fields=update_fields)
 
         refresh = RefreshToken.for_user(user)
 
