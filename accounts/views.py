@@ -1,3 +1,6 @@
+import random
+import uuid
+from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -88,6 +91,58 @@ class LoginView(APIView):
             "user": UserSerializer(user).data
         }, status=status.HTTP_200_OK)
 
+class GuestLoginView(APIView):
+    """
+    Allow external guests to enter directly without signing in.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        if not name:
+            name = f"Guest {random.randint(100, 999)}"
+
+        guest_email = f"guest_{uuid.uuid4().hex[:8]}@guest.cosmos.local"
+        user = User.objects.create_user(
+            email=guest_email,
+            name=name,
+            password=str(uuid.uuid4()),
+            role='Guest'
+        )
+        user.status = 'online'
+        user.save(update_fields=['status'])
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "tokens": {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            "user": UserSerializer(user).data,
+            "is_guest": True,
+        }, status=status.HTTP_200_OK)
+
+class UserSearchListView(APIView):
+    """
+    List registered team members for inviting into spaces.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        q = request.query_params.get('q', '').strip()
+        users = User.objects.filter(is_active=True).exclude(role='Guest')
+        if q:
+            users = users.filter(Q(name__icontains=q) | Q(email__icontains=q))
+        users = users.order_by('name')[:30]
+        return Response([{
+            'id': str(u.id),
+            'name': u.name,
+            'email': u.email,
+            'role': u.role,
+            'status': u.status,
+        } for u in users], status=status.HTTP_200_OK)
+
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -101,4 +156,8 @@ class LogoutView(APIView):
         if request.user.is_authenticated:
             request.user.status = 'offline'
             request.user.save(update_fields=['status'])
+            # If user was a guest, we can also delete or mark inactive
+            if request.user.role == 'Guest':
+                request.user.is_active = False
+                request.user.save(update_fields=['is_active'])
         return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)

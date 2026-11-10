@@ -13,6 +13,24 @@ class Space(models.Model):
     def __str__(self):
         return f"{self.name} ({self.id})"
 
+class SpaceMember(models.Model):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('member', 'Member'),
+    )
+
+    space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name='memberships')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='space_memberships')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('space', 'user')
+        ordering = ['-joined_at']
+
+    def __str__(self):
+        return f"{self.user.name} ({self.role}) in {self.space.name}"
+
 class Room(models.Model):
     ROOM_TYPE_CHOICES = (
         ('permanent', 'Permanent'),

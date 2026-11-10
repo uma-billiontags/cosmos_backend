@@ -5,7 +5,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from accounts.models import User
-from rooms.models import Room
+from rooms.models import Room, Space, SpaceMember
 
 def seed():
     # 1. Create Admin User
@@ -36,7 +36,49 @@ def seed():
     emp_user.save()
     print(f"Employee User: {emp_user.email} (Password: Password123!)")
 
-    # 3. Create Default Rooms
+    # 3. Create Sample Spaces & Memberships
+    space_admin, _ = Space.objects.get_or_create(
+        id='billiontags-team',
+        defaults={
+            'name': 'Billiontags_Team',
+            'owner': admin_user,
+            'admin_access': True,
+            'is_free': True,
+        }
+    )
+    SpaceMember.objects.get_or_create(
+        space=space_admin,
+        user=admin_user,
+        defaults={'role': 'admin'}
+    )
+    SpaceMember.objects.get_or_create(
+        space=space_admin,
+        user=emp_user,
+        defaults={'role': 'member'}
+    )
+
+    space_creation, _ = Space.objects.get_or_create(
+        id='billiontags-creation',
+        defaults={
+            'name': 'Billiontags creation',
+            'owner': emp_user,
+            'admin_access': True,
+            'is_free': True,
+        }
+    )
+    SpaceMember.objects.get_or_create(
+        space=space_creation,
+        user=emp_user,
+        defaults={'role': 'admin'}
+    )
+    SpaceMember.objects.get_or_create(
+        space=space_creation,
+        user=admin_user,
+        defaults={'role': 'member'}
+    )
+    print("Spaces and memberships seeded: Billiontags_Team & Billiontags creation")
+
+    # 4. Create Default Rooms
     rooms_data = [
         {
             'name': 'All-Hands Auditorium',
@@ -44,6 +86,7 @@ def seed():
             'capacity': 50,
             'description': 'Main company auditorium for office-wide announcements and town halls.',
             'created_by': admin_user,
+            'space': space_admin,
         },
         {
             'name': 'Engineering Huddle',
@@ -51,6 +94,7 @@ def seed():
             'capacity': 10,
             'description': 'Sprint planning and technical sync for developers.',
             'created_by': admin_user,
+            'space': space_admin,
         },
         {
             'name': 'Cowork Central Desk',
@@ -58,6 +102,7 @@ def seed():
             'capacity': 8,
             'description': 'Open co-working desk space for drop-in discussions.',
             'created_by': admin_user,
+            'space': space_admin,
         },
         {
             'name': 'Design Critique (Temp)',
@@ -65,6 +110,7 @@ def seed():
             'capacity': 4,
             'description': 'Ad-hoc huddle space created by team.',
             'created_by': emp_user,
+            'space': space_creation,
         },
     ]
 

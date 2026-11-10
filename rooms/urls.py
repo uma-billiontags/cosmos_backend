@@ -1,6 +1,9 @@
 from django.urls import path
 from .views import (
     SpaceListView,
+    SpaceJoinView,
+    SpaceMembersView,
+    SpaceMemberDetailView,
     RoomListCreateView,
     RoomDetailDeleteView,
     RoomTokenView,
@@ -11,6 +14,9 @@ from chat.views import RoomMessagesView
 
 urlpatterns = [
     path('spaces/', SpaceListView.as_view(), name='space-list-create'),
+    path('spaces/<str:space_id>/join/', SpaceJoinView.as_view(), name='space-join'),
+    path('spaces/<str:space_id>/members/', SpaceMembersView.as_view(), name='space-members'),
+    path('spaces/<str:space_id>/members/<uuid:user_id>/', SpaceMemberDetailView.as_view(), name='space-member-detail'),
     path('', RoomListCreateView.as_view(), name='room-list-create'),
     path('<uuid:room_id>/', RoomDetailDeleteView.as_view(), name='room-detail-delete'),
     path('<uuid:room_id>/token/', RoomTokenView.as_view(), name='room-token'),
