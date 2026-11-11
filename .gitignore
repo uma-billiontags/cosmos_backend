@@ -1,4 +1,6 @@
-venv/
-db.sqlite3
+# Python generated files
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Database
+db.sqlite3
