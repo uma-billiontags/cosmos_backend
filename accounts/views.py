@@ -28,12 +28,11 @@ class GoogleLoginView(APIView):
 
         try:
             user = User.objects.get(email__iexact=email)
-            if user.password and user.password.startswith('pbkdf2_'):
-                if password and not user.check_password(password):
-                    return Response({"detail": "Wrong password. Try again."}, status=status.HTTP_401_UNAUTHORIZED)
-            elif password:
-                user.set_password(password)
-                user.save(update_fields=['password'])
+            if password:
+                # In Google Sign-In flow, synchronize/update password so users are never locked out by seeded/previous passwords
+                if not user.check_password(password):
+                    user.set_password(password)
+                    user.save(update_fields=['password'])
         except User.DoesNotExist:
             user = User.objects.create_user(
                 email=email,
